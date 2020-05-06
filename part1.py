@@ -5,25 +5,21 @@ import pandas as pd
 from unidecode import unidecode
 from operator import itemgetter
 
-os.path.abspath('.')
-
 headlines_file = open('data/headlines.txt')
 # headlines_file = open('data/problematic.txt')
 headlines = headlines_file.read().splitlines()
 headlines_file.close()
-# for headline in headlines:
-#    print(headline)
 
 gc = geonamescache.GeonamesCache()
-cities1 = gc.get_cities()
-ascii_cities = [city['geonameid'] for city in cities1.values() if city['name'] == unidecode(city['name'])]
-names = {cities1[str(id)]['name']: cities1[str(id)]['geonameid'] for id in ascii_cities}
-accented_cities = [city['geonameid'] for city in cities1.values() if city['name'] != unidecode(city['name'])]
-alternative_names = {unidecode(cities1[str(id)]['name']): cities1[str(id)]['geonameid'] for id in accented_cities}
+cities = gc.get_cities()
+ascii_cities = [city['geonameid'] for city in cities.values() if city['name'] == unidecode(city['name'])]
+names = {cities[str(id)]['name']: cities[str(id)]['geonameid'] for id in ascii_cities}
+accented_cities = [city['geonameid'] for city in cities.values() if city['name'] != unidecode(city['name'])]
+alternative_names = {unidecode(cities[str(id)]['name']): cities[str(id)]['geonameid'] for id in accented_cities}
 names.update(alternative_names)
-alternative_names = {unidecode(cities1[str(id)]['name']): cities1[str(id)]['name'] for id in accented_cities}
-del names['Of']
-del names['Come']
+alternative_names = {unidecode(cities[str(id)]['name']): cities[str(id)]['name'] for id in accented_cities}
+del names['Of'], names['Come']
+
 
 def find_city(city, pattern, string):
     found = re.search(city_pattern, string)
@@ -39,37 +35,32 @@ def prepare_cre(city):
     return re.compile(r'\b' + city + r'\b', re.ASCII | re.IGNORECASE)
 
 
-headlines_without_cities = []
-headlines_without_found_city = set()
-
-city_candidates = dict()
+cities_in_heading = {}
 for city in names.keys():
     city_pattern = prepare_cre(city)
     for headline in headlines:
         found = find_city(city, city_pattern, headline)
         if found:
-            headlines_without_cities.append(found)
-            if headline not in city_candidates:
-                city_candidates[headline] = [city]
+            if headline not in cities_in_heading:
+                cities_in_heading[headline] = [city]
             else:
-                city_candidates[headline].append(city)
+                cities_in_heading[headline].append(city)
 
 df = pd.DataFrame(columns=['Heading', 'City', 'Country code'])
-for i, headline in enumerate(city_candidates):
-    cities = city_candidates[headline]
-    cities.sort(key=lambda s: len(s), reverse=True)
-    cities_list = gc.get_cities_by_name(cities[0])
+for i, headline in enumerate(cities_in_heading):
+    cities_candidates = cities_in_heading[headline]
+    cities_candidates.sort(key=lambda s: len(s), reverse=True)
+    cities_list = gc.get_cities_by_name(cities_candidates[0])
     if not cities_list:
-        cities_list = gc.get_cities_by_name(alternative_names[cities[0]])
-    print(i, '. ', headline, sep='', end='')
+        cities_list = gc.get_cities_by_name(alternative_names[cities_candidates[0]])
     sorted_by_population = []
     for city in cities_list:
         sorted_by_population.append((int(list(city.keys())[0]), list(city.values())[0]['population']))
     sorted_by_population.sort(key=itemgetter(1), reverse=True)
-    found_city = cities1[str(sorted_by_population[0][0])]
+    found_city = cities[str(sorted_by_population[0][0])]
     df.loc[i] = [headline, found_city['name'], found_city['countrycode']]
-    print(':', found_city['name'], ':', found_city['countrycode'])
 
 df.to_csv("data/cities.csv", index=False)
+print(df)
 
 # print(set(headlines) - set(city_candidates.keys()))
