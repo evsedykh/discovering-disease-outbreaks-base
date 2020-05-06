@@ -17,37 +17,27 @@ accented_cities = [city['geonameid'] for city in cities.values() if city['name']
 alternative_names = {unidecode(cities[str(id)]['name']): cities[str(id)]['geonameid'] for id in accented_cities}
 names.update(alternative_names)
 alternative_names = {unidecode(cities[str(id)]['name']): cities[str(id)]['name'] for id in accented_cities}
-del names['Of'], names['Come']
 
-
-def find_city(city, pattern, string):
-    if re.search(city_pattern, string):
-        return True
-    return None
-
-
-def prepare_cre(city):
-    return re.compile(r'\b' + city + r'\b', re.ASCII | re.IGNORECASE)
-
+sorted_by_len = list(names.keys())
+sorted_by_len.sort(key=lambda s: len(s), reverse=True)
+giant_cities_regex = ''
+for city in sorted_by_len:
+    giant_cities_regex += f'\\b{city}\\b|'
+giant_cities_regex = giant_cities_regex[:-1]
+cities_cre = re.compile(giant_cities_regex, re.ASCII)
 
 cities_in_headings = {}
-for city in names.keys():
-    city_pattern = prepare_cre(city)
-    for headline in headlines:
-        if find_city(city, city_pattern, headline):
-            if headline not in cities_in_headings:
-                cities_in_headings[headline] = [city]
-            else:
-                cities_in_headings[headline].append(city)
+for headline in headlines:
+    found = re.search(cities_cre, headline)
+    if found:
+        cities_in_headings[headline] = found.group()
 
 df = pd.DataFrame(columns=['Heading', 'City', 'Country code'])
 for i, headline in enumerate(cities_in_headings):
-    cities_candidates = cities_in_headings[headline]
-    print(cities_candidates)
-    cities_candidates.sort(key=lambda s: len(s), reverse=True)
-    cities_list = gc.get_cities_by_name(cities_candidates[0])
+    city_candidate = cities_in_headings[headline]
+    cities_list = gc.get_cities_by_name(city_candidate)
     if not cities_list:
-        cities_list = gc.get_cities_by_name(alternative_names[cities_candidates[0]])
+        cities_list = gc.get_cities_by_name(alternative_names[city_candidate])
     sorted_by_population = []
     for city in cities_list:
         sorted_by_population.append((int(list(city.keys())[0]), list(city.values())[0]['population']))
@@ -58,4 +48,4 @@ for i, headline in enumerate(cities_in_headings):
 df.to_csv("data/cities.csv", index=False)
 print(df)
 
-# print(set(headlines) - set(city_candidates.keys()))
+# print(set(headlines) - set(cities_in_headings.keys()))
