@@ -1,4 +1,3 @@
-import os
 import re
 import geonamescache
 import pandas as pd
@@ -22,12 +21,8 @@ del names['Of'], names['Come']
 
 
 def find_city(city, pattern, string):
-    found = re.search(city_pattern, string)
-    if found:
-        without_city = re.sub(city_pattern, '', string).strip()
-        without_city = re.sub(' {2,}', ' ', without_city)
-        # print('City ', city, " is found in '", string, "'", sep='')
-        return without_city
+    if re.search(city_pattern, string):
+        return True
     return None
 
 
@@ -35,20 +30,20 @@ def prepare_cre(city):
     return re.compile(r'\b' + city + r'\b', re.ASCII | re.IGNORECASE)
 
 
-cities_in_heading = {}
+cities_in_headings = {}
 for city in names.keys():
     city_pattern = prepare_cre(city)
     for headline in headlines:
-        found = find_city(city, city_pattern, headline)
-        if found:
-            if headline not in cities_in_heading:
-                cities_in_heading[headline] = [city]
+        if find_city(city, city_pattern, headline):
+            if headline not in cities_in_headings:
+                cities_in_headings[headline] = [city]
             else:
-                cities_in_heading[headline].append(city)
+                cities_in_headings[headline].append(city)
 
 df = pd.DataFrame(columns=['Heading', 'City', 'Country code'])
-for i, headline in enumerate(cities_in_heading):
-    cities_candidates = cities_in_heading[headline]
+for i, headline in enumerate(cities_in_headings):
+    cities_candidates = cities_in_headings[headline]
+    print(cities_candidates)
     cities_candidates.sort(key=lambda s: len(s), reverse=True)
     cities_list = gc.get_cities_by_name(cities_candidates[0])
     if not cities_list:
