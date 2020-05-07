@@ -34,8 +34,8 @@ predicted_kmeans = cluster_model_kmeans.fit_predict(coordinates)
 df['Cluster K-means'] = predicted_kmeans
 
 
-# cluster_model_dbscan = DBSCAN(eps=15.0, min_samples=10) # 1st try without great circle distance
-cluster_model_dbscan = DBSCAN(eps=1500.0, min_samples=10, metric=great_circle_distance)
+# cluster_model_dbscan = DBSCAN(eps=9.0, min_samples=3) # 1st try without great circle distance
+cluster_model_dbscan = DBSCAN(eps=250.0, min_samples=4, metric=great_circle_distance)
 predicted_dbscan = cluster_model_dbscan.fit_predict(coordinates)
 # coordinates.plot.scatter('Longitude', 'Latitude', c='cl', colormap='gist_rainbow')
 df['Cluster DBSCAN'] = predicted_dbscan
@@ -47,3 +47,5 @@ elif use_model == 'dbscan':
 
 map_plotter.scatter(coordinates['Longitude'], coordinates['Latitude'], c=cluster_colormap, latlon=True, cmap=plt.cm.jet)
 plt.show()
+
+df.to_csv("data/clusters.csv", index=False)
